@@ -34,14 +34,14 @@ node <skill_root>/scripts/parse_rss.js <source1> [source2 ...] [options]
 - 在线RSS链接：`https://example.com/rss.xml`
 - 本地XML文件：`./feeds/example.xml`
 - 包含XML文件的目录：`./feeds/`
-- 带别名的源（用 `=` 分隔）：`别名=地址`
+- 带别名的源（用 `@@` 分隔）：`别名@@地址`
 
 ### 别名语法
 
-在源地址前加 `别名=` 可以自定义该源在结果中的 source 字段名称：
+在源地址前加 `别名@@` 可以自定义该源在结果中的 source 字段名称：
 
 ```bash
-node scripts/parse_rss.js "中国海油=http://rss.example.com/feed1.xml" "中国船舶=http://rss.example.com/feed2.xml"
+node scripts/parse_rss.js "中国海油@@http://rss.example.com/feed1.xml" "中国船舶@@http://rss.example.com/feed2.xml"
 ```
 
 不指定别名时，在线源自动使用RSS频道标题，本地文件使用文件名。
@@ -70,7 +70,7 @@ node scripts/parse_rss.js "https://example.com/feed.xml"
 
 多个在线RSS带别名，合并输出：
 ```bash
-node scripts/parse_rss.js "海油=http://rss.example.com/feed1.xml" "船舶=http://rss.example.com/feed2.xml" --since 2026-04-01
+node scripts/parse_rss.js "海油@@http://rss.example.com/feed1.xml" "船舶@@http://rss.example.com/feed2.xml" --since 2026-04-01
 ```
 
 解析本地目录：
@@ -80,7 +80,7 @@ node scripts/parse_rss.js ./src-link
 
 混合使用在线和本地源：
 ```bash
-node scripts/parse_rss.js "海油=http://rss.example.com/feed.xml" ./src-link --keywords 海工,FPSO
+node scripts/parse_rss.js "海油@@http://rss.example.com/feed.xml" ./src-link --keywords 海工,FPSO
 ```
 
 ## 输出格式
@@ -106,6 +106,8 @@ node scripts/parse_rss.js "海油=http://rss.example.com/feed.xml" ./src-link --
 
 ## 注意事项
 
+- 不要使用 `web_fetch` 获取RSS内容，脚本内置了HTTP请求能力，直接传入URL即可
+- 必须通过 `exec` 工具运行 `node scripts/parse_rss.js` 来完成解析
 - 支持标准RSS 2.0格式，兼容CDATA包裹的字段
 - 在线RSS需要目标服务器允许HTTP访问，支持自动重定向
 - `--until` 的日期解析为当天零点，如需包含当天文章请用次日日期

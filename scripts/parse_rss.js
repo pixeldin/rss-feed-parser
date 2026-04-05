@@ -93,7 +93,7 @@ async function main() {
   }
 
   // 收集所有 source（非 -- 开头的参数）和可选参数
-  // source 支持别名语法：别名=地址，如 foo=http://rss1.xml
+  // source 支持别名语法：别名@@地址，如 foo@@http://rss1.xml
   const sources = []; // [{ path, alias }]
   let since, until, keywords, output;
 
@@ -103,10 +103,10 @@ async function main() {
     else if (args[i] === "--keywords" && args[i + 1]) keywords = args[++i].split(",");
     else if (args[i] === "--output" && args[i + 1]) output = args[++i];
     else if (!args[i].startsWith("--")) {
-      // 解析 别名=地址 格式，注意 URL 中也有 = 所以只 split 第一个
-      const eqIdx = args[i].indexOf("=");
-      if (eqIdx > 0 && !args[i].substring(0, eqIdx).includes("/") && !args[i].substring(0, eqIdx).includes("\\")) {
-        sources.push({ alias: args[i].substring(0, eqIdx), path: args[i].substring(eqIdx + 1) });
+      // 解析 别名@@地址 格式
+      const sepIdx = args[i].indexOf("@@");
+      if (sepIdx > 0) {
+        sources.push({ alias: args[i].substring(0, sepIdx), path: args[i].substring(sepIdx + 2) });
       } else {
         sources.push({ alias: "", path: args[i] });
       }
