@@ -3,10 +3,10 @@
  * RSS 订阅解析脚本 — OpenClaw Skill 入口
  *
  * 用法:
- *   node parse_rss.js <source> [--since YYYY-MM-DD] [--until YYYY-MM-DD]
- *                               [--keywords kw1,kw2] [--output file.json]
+ *   node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD]
+ *                                            [--keywords kw1,kw2] [--output file.json]
  *
- * <source> 可以是本地XML文件、目录、或在线RSS链接(http/https)
+ * <source> 可以是本地XML文件、目录、或在线RSS链接(http/https)，支持同时传入多个
  */
 
 const fs = require("fs");
@@ -86,52 +86,77 @@ async function main() {
   if (args.length === 0) {
     const usage = {
       ok: false,
-      error: "用法: node parse_rss.js <source> [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--keywords kw1,kw2] [--output file.json]",
+      error: "用法: node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--keywords kw1,kw2] [--output file.json]",
     };
     console.log(JSON.stringify(usage, null, 2));
     process.exit(2);
   }
 
-  const source = args[0];
+  // 收集所有 source（非 -- 开头的参数）和可选参数
+  // source 支持别名语法：别名=地址，如 foo=http://rss1.xml
+  const sources = []; // [{ path, alias }]
   let since, until, keywords, output;
 
-  for (let i = 1; i < args.length; i++) {
+  for (let i = 0; i < args.length; i++) {
     if (args[i] === "--since" && args[i + 1]) since = args[++i];
     else if (args[i] === "--until" && args[i + 1]) until = args[++i];
     else if (args[i] === "--keywords" && args[i + 1]) keywords = args[++i].split(",");
     else if (args[i] === "--output" && args[i + 1]) output = args[++i];
+    else if (!args[i].startsWith("--")) {
+      // 解析 别名=地址 格式，注意 URL 中也有 = 所以只 split 第一个
+      const eqIdx = args[i].indexOf("=");
+      if (eqIdx > 0 && !args[i].substring(0, eqIdx).includes("/") && !args[i].substring(0, eqIdx).includes("\\")) {
+        sources.push({ alias: args[i].substring(0, eqIdx), path: args[i].substring(eqIdx + 1) });
+      } else {
+        sources.push({ alias: "", path: args[i] });
+      }
+    }
+  }
+
+  if (sources.length === 0) {
+    console.log(JSON.stringify({ ok: false, error: "至少需要提供一个 source" }, null, 2));
+    process.exit(2);
   }
 
   try {
     let allArticles = [];
 
-    if (source.startsWith("http://") || source.startsWith("https://")) {
-      // 在线 RSS
-      const xml = await fetchUrl(source);
-      const articles = parseRSS(xml);
-      const hostname = new URL(source).hostname.replace(/\./g, "_");
-      articles.forEach((a) => (a.source = hostname));
-      allArticles.push(...articles);
-    } else {
-      // 本地文件或目录
-      const absPath = path.resolve(source);
-      if (!fs.existsSync(absPath)) throw new Error(`路径不存在：${absPath}`);
-
-      const files = [];
-      if (fs.statSync(absPath).isDirectory()) {
-        fs.readdirSync(absPath)
-          .filter((f) => f.endsWith(".xml"))
-          .forEach((f) => files.push(path.join(absPath, f)));
-      } else {
-        files.push(absPath);
-      }
-      if (files.length === 0) throw new Error("目录中未找到任何 .xml 文件");
-
-      for (const file of files) {
-        const xml = fs.readFileSync(file, "utf-8");
+    for (const { path: source, alias } of sources) {
+      if (source.startsWith("http://") || source.startsWith("https://")) {
+        // 在线 RSS
+        const xml = await fetchUrl(source);
         const articles = parseRSS(xml);
-        articles.forEach((a) => (a.source = path.basename(file, ".xml")));
+        // 优先用别名，其次用 channel title，最后用域名
+        let sourceName = alias;
+        if (!sourceName) {
+          const parser2 = new XMLParser({ ignoreAttributes: false, cdataPropName: "__cdata", trimValues: true });
+          const doc = parser2.parse(xml);
+          sourceName = unwrapCdata(doc?.rss?.channel?.title) || new URL(source).hostname.replace(/\./g, "_");
+        }
+        articles.forEach((a) => (a.source = sourceName));
         allArticles.push(...articles);
+      } else {
+        // 本地文件或目录
+        const absPath = path.resolve(source);
+        if (!fs.existsSync(absPath)) throw new Error(`路径不存在：${absPath}`);
+
+        const files = [];
+        if (fs.statSync(absPath).isDirectory()) {
+          fs.readdirSync(absPath)
+            .filter((f) => f.endsWith(".xml"))
+            .forEach((f) => files.push(path.join(absPath, f)));
+        } else {
+          files.push(absPath);
+        }
+        if (files.length === 0) throw new Error("目录中未找到任何 .xml 文件");
+
+        for (const file of files) {
+          const xml = fs.readFileSync(file, "utf-8");
+          const articles = parseRSS(xml);
+          const name = alias || path.basename(file, ".xml");
+          articles.forEach((a) => (a.source = name));
+          allArticles.push(...articles);
+        }
       }
     }
 
@@ -148,7 +173,7 @@ async function main() {
     // 写入结果文件
     const sinceTag = since ? since.replace(/-/g, "") : "all";
     const outputFile = output || `result_since_${sinceTag}.json`;
-    const outputDir = source.startsWith("http") ? process.cwd() : path.dirname(path.resolve(source));
+    const outputDir = process.cwd();
     const outputPath = path.resolve(outputDir, outputFile);
     fs.writeFileSync(outputPath, JSON.stringify(allArticles, null, 2), "utf-8");
 
