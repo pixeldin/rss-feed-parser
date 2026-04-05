@@ -61,13 +61,26 @@ function filterArticles(articles, opts = {}) {
 
 // ============ HTTP 获取 ============
 
-function fetchUrl(url) {
+/** 修正 URL 中 Base64 padding 的等号数量（最多4个） */
+function fixBase64Padding(url) {
+  return url.replace(/=+$/, (match) => {
+    return match.length > 4 ? "====" : match;
+  });
+}
+
+function fetchUrlOnce(url) {
   return new Promise((resolve, reject) => {
     const client = url.startsWith("https") ? https : http;
+    const headers = {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+      "Connection": "keep-alive",
+    };
     client
-      .get(url, { headers: { "User-Agent": "OpenClaw-RSS-Parser/1.0" } }, (res) => {
+      .get(url, { headers }, (res) => {
         if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-          return fetchUrl(res.headers.location).then(resolve).catch(reject);
+          return fetchUrlOnce(res.headers.location).then(resolve).catch(reject);
         }
         if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
         let data = "";
@@ -76,6 +89,31 @@ function fetchUrl(url) {
       })
       .on("error", reject);
   });
+}
+
+/**
+ * 带 Base64 padding 容错的 fetch
+ * 如果原始 URL 返回 404，自动尝试修正末尾等号数量（0~4个）
+ */
+async function fetchUrl(url) {
+  const fixedUrl = fixBase64Padding(url);
+  try {
+    return await fetchUrlOnce(fixedUrl);
+  } catch (err) {
+    if (!err.message.includes("404")) throw err;
+    // 404 时尝试不同的 padding
+    const base = fixedUrl.replace(/=+$/, "");
+    for (const padding of ["====", "===", "==", "=", ""]) {
+      const tryUrl = base + padding;
+      if (tryUrl === fixedUrl) continue;
+      try {
+        return await fetchUrlOnce(tryUrl);
+      } catch (_) {
+        continue;
+      }
+    }
+    throw new Error(`HTTP 404 - 尝试了多种Base64 padding均失败: ${url}`);
+  }
 }
 
 // ============ 主流程 ============
