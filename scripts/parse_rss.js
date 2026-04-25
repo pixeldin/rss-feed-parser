@@ -5,7 +5,7 @@
  * 用法:
  *   node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD]
  *                                            [--keywords kw1,kw2] [--exclude kw1,kw2]
- *                                            [--min-length 200] [--output file.json]
+ *                                            [--min-length 300] [--output file.json]
  *
  * <source> 可以是本地XML文件、目录、或在线RSS链接(http/https)，支持同时传入多个
  */
@@ -168,7 +168,7 @@ async function main() {
   if (args.length === 0) {
     const usage = {
       ok: false,
-      error: "用法: node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--keywords kw1,kw2] [--exclude kw1,kw2] [--min-length 200] [--output file.json]",
+      error: "用法: node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD] [--keywords kw1,kw2] [--exclude kw1,kw2] [--min-length 300] [--output file.json]",
     };
     console.log(JSON.stringify(usage, null, 2));
     process.exit(2);
@@ -177,7 +177,7 @@ async function main() {
   // 收集所有 source（非 -- 开头的参数）和可选参数
   // source 支持别名语法：别名@@地址，如 foo@@http://rss1.xml
   const sources = []; // [{ path, alias }]
-  let since, until, keywords, exclude, output, minLength = 200;
+  let since, until, keywords, exclude, output, minLength = 300;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--since" && args[i + 1]) since = args[++i];
