@@ -1,0 +1,63 @@
+{
+  "topics": {
+    "海洋油气装备": {
+      "description": "海洋油气装备国内外合作资讯",
+      "includeTitle": [
+        "海洋油气装备", "海工装备", "海上油气装备", "深海油气装备",
+        "水下油气生产系统", "FPSO", "半潜式钻井平台", "深海采矿装备",
+        "风电安装船", "油气工程船舶",
+        "国际合作", "海外合作", "中外合资", "技术合作", "项目合作",
+        "联合研发", "订单签署", "供应链合作", "装备出口", "装备引进",
+        "EPCI总承包", "联合投标", "跨境交付", "技术转让", "战略合作",
+        "合作备忘录", "合资建厂",
+        "签约", "中标", "新订单", "合作进展"
+      ],
+      "includeContent": [
+        "海洋油气装备", "海工装备", "海上油气装备", "深海油气装备",
+        "水下油气生产系统", "FPSO", "半潜式钻井平台", "深海采矿装备",
+        "风电安装船", "油气工程船舶",
+        "国际合作", "国内外合作", "海外合作", "中外合资", "技术合作",
+        "项目合作", "联合研发", "订单签署", "供应链合作", "装备出口",
+        "装备引进", "EPCI总承包", "联合投标", "跨境交付", "技术转让",
+        "战略合作", "合作备忘录", "合资建厂",
+        "offshore oil and gas equipment", "subsea oil and gas equipment",
+        "offshore engineering equipment", "FPSO",
+        "semi-submersible drilling rig", "deepsea oil and gas equipment",
+        "international cooperation", "Sino-foreign cooperation",
+        "joint R&D", "project cooperation", "EPC contract", "EPCI contract",
+        "supply chain cooperation", "equipment export", "equipment import",
+        "order signing", "strategic partnership", "technology transfer",
+        "cross-border delivery"
+      ]
+    },
+    "海洋碳产业": {
+      "description": "海洋碳产业交易机制",
+      "includeTitle": [
+        "海洋碳汇", "蓝碳", "蓝色碳汇", "海洋碳产业", "滨海蓝碳",
+        "红树林碳汇", "海草床碳汇", "盐沼碳汇", "渔业碳汇",
+        "碳交易", "蓝碳交易", "海洋碳汇交易", "碳交易机制",
+        "碳排放权交易", "碳交易市场", "海洋碳定价", "蓝碳核算",
+        "蓝碳标准", "碳交易试点", "碳汇质押", "海洋碳金融",
+        "CCER", "蓝碳项目备案", "海洋碳汇上市"
+      ],
+      "includeContent": [
+        "海洋碳汇", "蓝碳", "蓝色碳汇", "海洋碳产业", "滨海蓝碳", "碳抵销",
+        "红树林碳汇", "海草床碳汇", "盐沼碳汇", "渔业碳汇",
+        "碳交易", "蓝碳交易", "海洋碳汇交易", "碳交易机制",
+        "碳排放权交易", "碳交易市场", "海洋碳定价", "蓝碳核算",
+        "蓝碳标准", "交易规则", "碳交易试点", "碳汇质押",
+        "海洋碳金融", "CCER", "国家核证自愿减排量", "VER",
+        "核证碳标准", "碳减排量", "碳交易政策", "蓝碳项目备案",
+        "海洋碳汇上市",
+        "blue carbon", "marine carbon sink", "coastal blue carbon",
+        "mangrove carbon sink", "seagrass carbon sink",
+        "ocean carbon trading", "blue carbon trading",
+        "carbon trading mechanism", "carbon emission trading",
+        "carbon market", "blue carbon accounting", "blue carbon standard",
+        "carbon pricing", "carbon credit", "verified carbon standard",
+        "VCS", "CCER", "marine carbon finance", "blue carbon project",
+        "carbon trading policy"
+      ]
+    }
+  }
+}

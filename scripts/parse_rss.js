@@ -5,7 +5,10 @@
  * 用法:
  *   node parse_rss.js <source1> [source2 ...] [--since YYYY-MM-DD] [--until YYYY-MM-DD]
  *                                            [--keywords kw1,kw2] [--exclude kw1,kw2]
- *                                            [--min-length 300] [--output file.json]
+ *                                            [--target 主题名] [--min-length 300] [--output file.json]
+ *
+ * --target: 指定主题名（对应 target_rules.json 中的 topics 键名），
+ *           启用正向关键词匹配，仅保留标题或正文命中主题关键词的文章
  *
  * <source> 可以是本地XML文件、目录、或在线RSS链接(http/https)，支持同时传入多个
  */
@@ -54,7 +57,7 @@ function parseRSS(xml) {
 // ============ 内置过滤规则 ============
 
 function loadFilterRules() {
-  const rulesPath = path.resolve(__dirname, "..", "filter_rules.json");
+  const rulesPath = path.resolve(__dirname, "..", "rules", "filter_rules.json");
   if (fs.existsSync(rulesPath)) {
     try {
       return JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
@@ -65,6 +68,25 @@ function loadFilterRules() {
   return {};
 }
 
+// ============ 主题正向匹配规则 ============
+
+function loadTargetRules(topicName) {
+  const rulesPath = path.resolve(__dirname, "..", "rules", "target_rules.json");
+  if (!fs.existsSync(rulesPath)) return null;
+  try {
+    const data = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
+    const topic = data.topics && data.topics[topicName];
+    if (!topic) {
+      const available = data.topics ? Object.keys(data.topics).join(", ") : "无";
+      console.error(`[target] 未找到主题 "${topicName}"，可用主题: ${available}`);
+      return null;
+    }
+    return topic;
+  } catch (_) {
+    return null;
+  }
+}
+
 // ============ 过滤 ============
 
 function filterArticles(articles, opts = {}) {
@@ -72,6 +94,11 @@ function filterArticles(articles, opts = {}) {
   const rules = loadFilterRules();
   const builtinExcludeTitle = rules.excludeTitle || [];
   const builtinExcludeContent = rules.excludeContent || [];
+
+  // 加载主题正向匹配规则
+  const targetTopic = opts.target ? loadTargetRules(opts.target) : null;
+  const targetIncludeTitle = targetTopic ? (targetTopic.includeTitle || []) : [];
+  const targetIncludeContent = targetTopic ? (targetTopic.includeContent || []) : [];
 
   return articles.filter((a) => {
     if (opts.since || opts.until) {
@@ -88,6 +115,21 @@ function filterArticles(articles, opts = {}) {
     if (builtinExcludeTitle.some((kw) => titleLower.includes(kw.toLowerCase()))) return false;
     // 内置规则：正文反向过滤
     if (builtinExcludeContent.some((kw) => textLower.includes(kw.toLowerCase()))) return false;
+
+    // 主题正向匹配：标题或正文必须命中至少一个关键词，否则排除
+    if (targetTopic) {
+      const titleHit = targetIncludeTitle.some((kw) => titleLower.includes(kw.toLowerCase()));
+      const contentHit = targetIncludeContent.some((kw) => textLower.includes(kw.toLowerCase()));
+      if (!titleHit && !contentHit) return false;
+      // 记录命中的关键词供参考
+      a.targetMatched = true;
+      const matchedKeywords = [];
+      targetIncludeTitle.filter((kw) => titleLower.includes(kw.toLowerCase())).forEach((kw) => matchedKeywords.push(kw));
+      targetIncludeContent.filter((kw) => textLower.includes(kw.toLowerCase())).forEach((kw) => {
+        if (!matchedKeywords.includes(kw)) matchedKeywords.push(kw);
+      });
+      a.matchedKeywords = matchedKeywords;
+    }
 
     // 命令行 --keywords：在正文中匹配，命中则标记，不命中不排除
     if (opts.keywords && opts.keywords.length > 0) {
@@ -177,13 +219,14 @@ async function main() {
   // 收集所有 source（非 -- 开头的参数）和可选参数
   // source 支持别名语法：别名@@地址，如 foo@@http://rss1.xml
   const sources = []; // [{ path, alias }]
-  let since, until, keywords, exclude, output, minLength = 300;
+  let since, until, keywords, exclude, output, target, minLength = 300;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === "--since" && args[i + 1]) since = args[++i];
     else if (args[i] === "--until" && args[i + 1]) until = args[++i];
     else if (args[i] === "--keywords" && args[i + 1]) keywords = args[++i].split(",");
     else if (args[i] === "--exclude" && args[i + 1]) exclude = args[++i].split(",");
+    else if (args[i] === "--target" && args[i + 1]) target = args[++i];
     else if (args[i] === "--min-length" && args[i + 1]) minLength = parseInt(args[++i], 10);
     else if (args[i] === "--output" && args[i + 1]) output = args[++i];
     else if (!args[i].startsWith("--")) {
@@ -247,15 +290,17 @@ async function main() {
     const totalCount = allArticles.length;
 
     // 过滤
-    const hasFilter = since || until || (keywords && keywords.length > 0) || (exclude && exclude.length > 0) || minLength > 0;
+    const hasFilter = since || until || (keywords && keywords.length > 0) || (exclude && exclude.length > 0) || minLength > 0 || target;
     if (hasFilter) {
-      allArticles = filterArticles(allArticles, { since, until, keywords, exclude, minLength });
+      allArticles = filterArticles(allArticles, { since, until, keywords, exclude, minLength, target });
     }
 
     // 按发布时间降序，keywords命中的排在前面
     allArticles.sort((a, b) => {
       // keywordMatched 优先
       if (a.keywordMatched !== b.keywordMatched) return a.keywordMatched ? -1 : 1;
+      // targetMatched 次优先
+      if (a.targetMatched !== b.targetMatched) return a.targetMatched ? -1 : 1;
       return new Date(b.pubDate) - new Date(a.pubDate);
     });
 
@@ -274,6 +319,7 @@ async function main() {
       ok: true,
       total: totalCount,
       filtered: allArticles.length,
+      target: target || null,
       outputFile: outputPath,
       articles: allArticles,
     };
